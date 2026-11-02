@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { RegisterSW } from '@/components/RegisterSW'
 import { Shell } from '@/components/Shell'
 import { readDevState } from '@/core/dev-state'
 import { VERSION } from '@/core/version'
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" data-env={env}>
       <body>
         <Shell version={VERSION}>{children}</Shell>
+        <RegisterSW />
       </body>
     </html>
   )
