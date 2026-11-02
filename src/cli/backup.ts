@@ -54,6 +54,11 @@ function pruneFiles(db: Db): number {
 }
 
 try {
+  // A first deploy has no DB yet; the migration that runs next creates it.
+  if (!fs.existsSync(dbFile) && process.argv.includes('--backup-only')) {
+    console.log(`no DB at ${dbFile} yet; nothing to back up`)
+    process.exit(0)
+  }
   if (!fs.existsSync(dbFile)) throw new Error(`${dbFile} does not exist`)
   const db = connect(dbFile)
   console.log(`backup: ${backup(db)}`)
