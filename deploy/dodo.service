@@ -1,0 +1,25 @@
+# Template: deploy/setup.sh fills in @NODE_BIN@ and @PORT@ and installs it to /etc/systemd/system.
+[Unit]
+Description=dodo docs (next start)
+After=network.target
+ConditionPathExists=/opt/dodo/current/package.json
+
+[Service]
+User=dodo
+Group=dodo
+WorkingDirectory=/opt/dodo/current
+Environment=NODE_ENV=production
+Environment=PORT=@PORT@
+Environment=DODO_DB=/var/lib/dodo/dodo.db
+Environment=DODO_FILES=/var/lib/dodo/files
+ExecStart=@NODE_BIN@ node_modules/next/dist/bin/next start -H 127.0.0.1 -p ${PORT}
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/dodo
+
+[Install]
+WantedBy=multi-user.target
