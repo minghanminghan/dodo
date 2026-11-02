@@ -2,8 +2,9 @@ import { tx } from './db'
 import type { Db } from './db'
 import { DodoError } from './errors'
 import { hash } from './format'
+import { loadFiles } from './files'
 import { normalizePath, normalizeProject, titleOf } from './paths'
-import type { Doc, DocIndex } from './types'
+import type { Doc, DocIndex, FileMeta } from './types'
 
 export type SaveResult = { doc: Doc; conflictOf?: string }
 type Row = { id: number; path: string; body: string; created: string; updated: string; projects: string | null }
@@ -14,7 +15,7 @@ const SELECT = `SELECT d.id, d.path, d.body, d.created, d.updated,
   (SELECT group_concat(project, ',') FROM (SELECT project FROM doc_projects WHERE doc_id = d.id ORDER BY project)) AS projects
   FROM docs d WHERE d.deleted_at IS NULL`
 
-function toDoc(r: Row): Doc {
+function toDoc(r: Row, files: FileMeta[] = []): Doc {
   return {
     path: r.path,
     title: titleOf(r.path, r.body),
@@ -23,7 +24,7 @@ function toDoc(r: Row): Doc {
     created: r.created,
     updated: r.updated,
     bodyHash: hash(r.body),
-    files: [],
+    files,
   }
 }
 
@@ -35,11 +36,12 @@ export function readDoc(db: Db, path: string): Doc {
   const p = normalizePath(path)
   const row = findRow(db, p)
   if (!row) throw new DodoError('not_found', `doc ${p} not found`)
-  return toDoc(row)
+  return toDoc(row, loadFiles(db, row.id).get(row.id))
 }
 
 export function loadIndex(db: Db): DocIndex {
-  return { docs: (db.prepare(`${SELECT} ORDER BY d.path`).all() as Row[]).map(toDoc) }
+  const files = loadFiles(db)
+  return { docs: (db.prepare(`${SELECT} ORDER BY d.path`).all() as Row[]).map((r) => toDoc(r, files.get(r.id))) }
 }
 
 function normalizeProjects(projects: string[]): string[] {
