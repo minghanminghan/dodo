@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Tailwind v4 no longer gives buttons a pointer cursor. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Custom arrow with room to its right. Unlayered so it beats px-* utilities. */
+select {
+  appearance: none;
+  padding-right: 1.75rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath d='M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4z'/%3E%3C/svg%3E")
+    no-repeat right 0.5rem center / 1rem;
+  background-color: white;
+}
+
+/* iOS Safari zooms into any field under 16px on focus and stays zoomed. Unlayered so it beats text-* utilities. */
+@media (width < 48rem) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Rendered markdown. */
+.md { @apply text-sm leading-6 text-gray-900; }
+.md > * + * { @apply mt-3; }
+.md h1 { @apply text-2xl font-semibold; }
+.md h2 { @apply mt-6 text-xl font-semibold; }
+.md h3 { @apply mt-5 text-base font-semibold; }
+.md a { @apply text-blue-700 underline; }
+.md ul { @apply list-disc pl-6; }
+.md ol { @apply list-decimal pl-6; }
+.md blockquote { @apply border-l-4 border-gray-200 pl-3 text-gray-600; }
+.md code { @apply rounded bg-gray-100 px-1 font-mono text-[0.85em]; }
+.md pre { @apply overflow-x-auto rounded bg-gray-50 p-3 text-xs leading-5; }
+.md pre code { @apply bg-transparent p-0; }
+.md table { @apply border-collapse text-sm; }
+.md th, .md td { @apply border border-gray-200 px-2 py-1; }
+.md img { @apply max-w-full rounded; }
+.md hr { @apply border-gray-200; }
+
+.hljs-keyword, .hljs-built_in, .hljs-selector-tag { color: #7c3aed; }
+.hljs-string, .hljs-attr, .hljs-template-string { color: #047857; }
+.hljs-comment { color: #6b7280; font-style: italic; }
+.hljs-number, .hljs-literal { color: #b45309; }
+.hljs-title, .hljs-function, .hljs-name { color: #1d4ed8; }
+.hljs-variable, .hljs-params { color: #be123c; }
+
+.cm-editor { @apply h-full text-sm; }
+.cm-editor.cm-focused { outline: none; }
+.cm-scroller { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
