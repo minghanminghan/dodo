@@ -1,0 +1,28 @@
+# Template: deploy/setup.sh fills in @NODE_BIN@ and installs it to /etc/systemd/system.
+# Started nightly by dodo-backup.timer. Run now: sudo systemctl start dodo-backup
+[Unit]
+Description=dodo nightly DB backup and cleanup
+ConditionPathExists=/opt/dodo/current/dist/backup.js
+
+[Service]
+Type=oneshot
+User=dodo
+Group=dodo
+WorkingDirectory=/opt/dodo/current
+Environment=DODO_DB=/var/lib/dodo/dodo.db
+Environment=DODO_FILES=/var/lib/dodo/files
+Environment=DODO_BACKUPS=/var/backups/dodo
+ExecStart=@NODE_BIN@ dist/backup.js
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dodo /var/backups/dodo
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
