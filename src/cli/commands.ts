@@ -116,7 +116,7 @@ async function cmdList(values: Values): Promise<CommandResult> {
   let docs = (await api<DocIndex>('/api/docs')).docs
   const project = one(values, 'project')?.toUpperCase()
   if (project) docs = docs.filter((d) => d.projects.includes(project))
-  const under = (values.under as string | undefined)?.toLowerCase().replace(/^\/+|\/+$/g, '')
+  const under = (values.under as string | undefined)?.toLowerCase().replace(/^\/+|\/+$/g, '').replace(/\.md$/, '')
   if (under) docs = docs.filter((d) => d.path === under || d.path.startsWith(under + '/'))
   return { kind: 'list', value: docs.map((d) => ({ path: d.path, title: d.title, projects: d.projects, updated: d.updated })) }
 }

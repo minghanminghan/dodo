@@ -10,7 +10,8 @@ export function proxy(req: NextRequest): Response {
   const client = req.headers.get(VERSION_HEADER)
   const headers = { [VERSION_HEADER]: VERSION }
   const { pathname, search } = req.nextUrl
-  if (client && pathname !== '/api/version' && compareVersions(client, VERSION) === 'incompatible') {    const message = `client version ${client} is incompatible with server version ${VERSION}`
+  if (client && pathname !== '/api/version' && compareVersions(client, VERSION) === 'incompatible') {
+    const message = `client version ${client} is incompatible with server version ${VERSION}`
     return Response.json({ error: { code: 'version', message } }, { status: 426, headers })
   }
   if (

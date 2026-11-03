@@ -9,12 +9,6 @@ import { useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 import { codeLanguages } from './codeLanguages'
 
-export function insertAtCursor(view: EditorView, text: string): void {
-  const { from, to } = view.state.selection.main
-  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } })
-  view.focus()
-}
-
 export function Editor({ initial, onChange, viewRef }: { initial: string; onChange(body: string): void; viewRef: RefObject<EditorView | null> }) {
   const host = useRef<HTMLDivElement>(null)
   const change = useRef(onChange)

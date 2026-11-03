@@ -37,3 +37,18 @@ export function pathParam(req: Request): string {
   if (!p) throw new DodoError('usage', 'missing ?path=')
   return p
 }
+
+type Shape = Record<string, 'string' | 'string?' | 'string[]?'>
+
+// Reads a JSON object body and checks its field types, so bad input is a 400, not a 500.
+export async function jsonBody<T>(req: Request, shape: Shape): Promise<T> {
+  const body = await req.json().catch(() => null)
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new DodoError('usage', 'expected a JSON object body')
+  for (const [key, type] of Object.entries(shape)) {
+    const v = (body as Record<string, unknown>)[key]
+    if (v === undefined && type.endsWith('?')) continue
+    const ok = type.startsWith('string[]') ? Array.isArray(v) && v.every((x) => typeof x === 'string') : typeof v === 'string'
+    if (!ok) throw new DodoError('usage', `"${key}" must be a ${type.replace('?', '')}`)
+  }
+  return body as T
+}

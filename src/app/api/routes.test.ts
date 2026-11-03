@@ -21,3 +21,9 @@ test('PUT with a stale hash is 409; with onConflict copy it is 200 and names the
   const copy = await (await putDoc(jsonReq({ body: 'three', baseHash: created.doc.bodyHash, clientId: 'c', onConflict: 'copy' }, 'PUT', '?path=a'))).json()
   expect(copy).toMatchObject({ conflictOf: 'a', doc: { path: 'a.conflict-1' } })
 })
+test('bad JSON shapes are 400', async () => {
+  const bad = new Request('http://x/api', { method: 'POST', body: 'nope' })
+  expect((await postDocs(bad)).status).toBe(400)
+  expect((await postDocs(jsonReq({ path: 'a', body: 'x', projects: 'SPAR' }))).status).toBe(400)
+  expect((await putDoc(jsonReq({ body: 1 }, 'PUT', '?path=a'))).status).toBe(400)
+})

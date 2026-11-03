@@ -35,6 +35,8 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     INSERT INTO docs_fts (rowid, path, body) VALUES (new.id, new.path, new.body);
   END;
   `,
+  // The clientId of the last write, so a retried write after a lost response is not a conflict.
+  'ALTER TABLE docs ADD COLUMN write_client_id TEXT',
 ]
 
 export function dbPath(): string {

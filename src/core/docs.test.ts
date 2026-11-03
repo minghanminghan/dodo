@@ -41,3 +41,10 @@ test('a deleted path can be reused; projects are normalized', () => {
   createDoc(db, { path: 'a', body: '' }); deleteDoc(db, 'a')
   expect(createDoc(db, { path: 'a', body: '', projects: ['spar', 'crow'] }).doc.projects).toEqual(['CROW', 'SPAR'])
 })
+test('retried write with a newer body after a lost response is not a conflict', () => {
+  const { doc } = createDoc(db, { path: 'a', body: 'one' })
+  writeDoc(db, 'a', { body: 'two', baseHash: doc.bodyHash, clientId: 'w', onConflict: 'copy' })
+  const r = writeDoc(db, 'a', { body: 'three', baseHash: doc.bodyHash, clientId: 'w', onConflict: 'copy' })
+  expect(r.conflictOf).toBeUndefined()
+  expect(loadIndex(db).docs.map((d) => [d.path, d.body])).toEqual([['a', 'three']])
+})

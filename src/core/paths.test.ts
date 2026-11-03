@@ -6,7 +6,7 @@ test('normalizePath', () => {
   expect(normalizePath('Deploy/Mini-PC/')).toBe('deploy/mini-pc')
   expect(normalizePath('/deploy/runbook.md')).toBe('deploy/runbook')
   expect(normalizePath('a.conflict-2')).toBe('a.conflict-2')
-  for (const bad of ['', '../x', 'a//b', 'a/./b', 'a b', '-a', 'a/'.repeat(9) + 'z'])
+  for (const bad of ['', '../x', 'a//b', 'a/./b', 'a b', '-a', 'a.', 'a..b', 'a/'.repeat(9) + 'z'])
     expect(() => normalizePath(bad)).toThrow(DodoError)
 })
 test('normalizeProject', () => {
@@ -16,4 +16,7 @@ test('normalizeProject', () => {
 test('titleOf', () => {
   expect(titleOf('deploy/mini-pc', '# Mini PC deploy\n\ntext')).toBe('Mini PC deploy')
   expect(titleOf('deploy/mini-pc', 'no heading')).toBe('mini-pc')
+})
+test('too deep says so', () => {
+  expect(() => normalizePath('a/'.repeat(8) + 'z')).toThrow(/too deep/)
 })
