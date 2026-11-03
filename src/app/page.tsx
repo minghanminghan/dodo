@@ -1,16 +1,26 @@
 'use client'
 
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useMemo, useState } from 'react'
 import { useDodo, visibleDocs } from '@/client/store'
 import { DocView, NewDoc } from '@/components/DocView'
 import { Search } from '@/components/Search'
 import { Tree } from '@/components/Tree'
+import { normalizePath } from '@/core/paths'
+
+function docParam(raw: string | null): string | null {
+  if (!raw) return null
+  try {
+    return normalizePath(raw)
+  } catch {
+    return raw
+  }
+}
 
 function Home() {
   const params = useSearchParams()
-  const open = params.get('doc')
+  const open = docParam(params.get('doc'))
   const isNew = params.has('new')
   const index = useDodo((s) => s.index)
   const outbox = useDodo((s) => s.outbox)
@@ -39,9 +49,9 @@ function Home() {
       </aside>
       <section className={`${pane ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
         {pane && (
-          <Link href="/" className="px-4 pt-3 text-sm text-gray-600 md:hidden">
+          <AppLink href="/" className="px-4 pt-3 text-sm text-gray-600 md:hidden">
             ← Docs
-          </Link>
+          </AppLink>
         )}
         <div className="min-h-0 flex-1">
           {isNew ? (

@@ -99,8 +99,15 @@ export function writeDoc(
   return tx(db, () => {
     const current = readDoc(db, p)
     if (current.bodyHash === hash(input.body)) return { doc: current }
-    if (input.baseHash === current.bodyHash) {
-      db.prepare('UPDATE docs SET body = ?, updated = ? WHERE path = ? AND deleted_at IS NULL').run(input.body, now(), p)
+    const last = db.prepare('SELECT write_client_id AS id FROM docs WHERE path = ? AND deleted_at IS NULL').get(p) as { id: string | null }
+    // A retry of a write that landed (its response lost) may carry a newer body; it is not a conflict.
+    if (input.baseHash === current.bodyHash || (input.clientId && last.id === input.clientId)) {
+      db.prepare('UPDATE docs SET body = ?, updated = ?, write_client_id = ? WHERE path = ? AND deleted_at IS NULL').run(
+        input.body,
+        now(),
+        input.clientId ?? null,
+        p,
+      )
       return { doc: readDoc(db, p) }
     }
     if (input.onConflict !== 'copy') throw new DodoError('conflict', `doc ${p} changed since it was read`)

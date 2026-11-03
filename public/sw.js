@@ -18,12 +18,28 @@ self.addEventListener("activate", (event) => {
       .then((names) =>
         Promise.all(names.filter((n) => !CURRENT.includes(n)).map((n) => caches.delete(n))),
       )
+      .then(dropQueryPages)
       .then(() => self.clients.claim()),
   );
 });
 
 function assetsOf(html) {
   return [...new Set(html.match(ASSET) ?? [])];
+}
+
+// Every /?doc= URL serves the same app page, so pages are cached by path only.
+function pageKey(url) {
+  const u = new URL(url);
+  return u.origin + u.pathname;
+}
+
+// Older builds stored one page per ?doc= URL.
+async function dropQueryPages() {
+  const pages = await caches.open(PAGES);
+  for (const req of await pages.keys()) {
+    const { pathname, search } = new URL(req.url);
+    if (search && !pathname.startsWith("/api/")) await pages.delete(req);
+  }
 }
 
 let shellQueue = Promise.resolve();
@@ -40,13 +56,15 @@ function cacheShell(url, res) {
 async function storeShell(url, res) {
   res = res ?? (await fetch(url));
   if (!res.ok || res.redirected) return;
-  const html = await res.clone().text();
+  const assets = assetsOf(await res.clone().text());
   const statics = await caches.open(STATIC);
-  await Promise.all(
-    assetsOf(html).map(async (a) => (await statics.match(a)) || statics.add(a)),
-  );
-  await (await caches.open(PAGES)).put(url, res);
-  await prune();
+  await Promise.all(assets.map(async (a) => (await statics.match(a)) || statics.add(a)));
+  const pages = await caches.open(PAGES);
+  const old = await pages.match(url);
+  const before = old ? assetsOf(await old.text()) : [];
+  await pages.put(url, res);
+  // Lazy chunks (editor, code parsers) are in no page, so prune only when a deploy changes the page.
+  if (before.length !== assets.length || before.some((a) => !assets.includes(a))) await prune();
 }
 
 async function prune() {
@@ -75,15 +93,16 @@ async function cacheFirst(event) {
 
 async function navigate(event) {
   const { request } = event;
+  const key = pageKey(request.url);
   const cache = await caches.open(PAGES);
-  const hit = await cache.match(request);
+  const hit = await cache.match(key);
   if (hit) {
-    event.waitUntil(cacheShell(request.url).catch(() => {}));
+    event.waitUntil(cacheShell(key).catch(() => {}));
     return hit;
   }
   try {
     const res = await fetch(request);
-    event.waitUntil(cacheShell(request.url, res.clone()).catch(() => {}));
+    event.waitUntil(cacheShell(key, res.clone()).catch(() => {}));
     return res;
   } catch (err) {
     const shell = await cache.match("/");

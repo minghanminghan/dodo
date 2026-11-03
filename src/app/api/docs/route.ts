@@ -1,6 +1,6 @@
 import { gzipSync } from 'node:zlib'
 import { createDoc } from '@/core'
-import { errorResponse, getState, refresh } from '@/server/state'
+import { errorResponse, getState, jsonBody, refresh } from '@/server/state'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,7 +26,10 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   try {
     const state = getState()
-    const result = createDoc(state.db, await req.json())
+    const result = createDoc(
+      state.db,
+      await jsonBody(req, { path: 'string', body: 'string', projects: 'string[]?', clientId: 'string?', onConflict: 'string?' }),
+    )
     refresh(state)
     return Response.json(result)
   } catch (err) {

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { useState } from 'react'
 import type { Doc } from '@/core'
 
@@ -41,12 +41,12 @@ export function Tree({ docs, active }: { docs: Doc[]; active: string | null }) {
             <span className="w-4" />
           )}
           {n.doc ? (
-            <Link
+            <AppLink
               href={`/?doc=${n.path}`}
               className={`flex-1 truncate rounded px-1 py-1 text-sm ${active === n.path ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               {n.name}
-            </Link>
+            </AppLink>
           ) : (
             <button onClick={() => toggle(n.path)} className="flex-1 truncate px-1 py-1 text-left text-sm font-medium text-gray-500">
               {n.name}/

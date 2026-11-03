@@ -1,14 +1,26 @@
 'use client'
 
 import type { EditorView } from '@codemirror/view'
-import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect, useRef, useState } from 'react'
 import { deleteDoc, moveDoc, setProjects, uploadFile } from '@/client/api'
-import { useDodo } from '@/client/store'
+import { useDodo, visibleDocs } from '@/client/store'
 import type { Doc } from '@/core'
 import { normalizePath, normalizeProject } from '@/core/paths'
-import { Editor, insertAtCursor } from './Editor'
+import { go, setUnsaved } from './AppLink'
 import { Markdown } from './Markdown'
+
+// CodeMirror is most of the page's JS, so it loads only when editing starts.
+const Editor = dynamic(() => import('./Editor').then((m) => m.Editor), {
+  ssr: false,
+  loading: () => <div className="flex-1" />,
+})
+
+function insertAtCursor(view: EditorView, text: string): void {
+  const { from, to } = view.state.selection.main
+  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } })
+  view.focus()
+}
 
 const NEEDS_SIGNAL = 'Needs a signal'
 const btn = 'rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-40'
@@ -18,7 +30,6 @@ function message(err: unknown): string {
 }
 
 export function DocView({ doc }: { doc: Doc }) {
-  const router = useRouter()
   const offline = useDodo((s) => s.offline)
   const pending = useDodo((s) => s.outbox.find((e) => e.path === doc.path))
   const saveEdit = useDodo((s) => s.saveEdit)
@@ -29,6 +40,18 @@ export function DocView({ doc }: { doc: Doc }) {
   const file = useRef<HTMLInputElement>(null)
   // A doc only in the outbox does not exist on the server yet.
   const onServer = !(pending?.kind === 'create')
+  const dirty = draft !== null && draft !== doc.body
+
+  useEffect(() => {
+    if (!dirty) return
+    setUnsaved(true)
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => {
+      setUnsaved(false)
+      window.removeEventListener('beforeunload', warn)
+    }
+  }, [dirty])
 
   async function online(run: () => Promise<void>) {
     setBusy(true)
@@ -47,14 +70,14 @@ export function DocView({ doc }: { doc: Doc }) {
     if (!to || to === doc.path) return
     void online(async () => {
       await moveDoc(doc.path, to)
-      router.replace(`/?doc=${normalizePath(to)}`)
+      go(`/?doc=${normalizePath(to)}`, { replace: true })
     })
   }
   const remove = () => {
     if (!confirm(`Delete ${doc.path}?`)) return
     void online(async () => {
       await deleteDoc(doc.path)
-      router.replace('/')
+      go('/', { replace: true })
     })
   }
   const editProjects = () => {
@@ -120,7 +143,7 @@ export function DocView({ doc }: { doc: Doc }) {
                 if (f) upload(f)
               }}
             />
-            <button className={btn} onClick={() => setDraft(null)}>
+            <button className={btn} onClick={() => (!dirty || confirm('Discard your unsaved edit?')) && setDraft(null)}>
               Cancel
             </button>
             <button className="rounded bg-gray-900 px-3 py-1 text-xs text-white hover:bg-gray-700" onClick={() => void save()}>
@@ -142,7 +165,6 @@ export function DocView({ doc }: { doc: Doc }) {
 }
 
 export function NewDoc() {
-  const router = useRouter()
   const createDoc = useDodo((s) => s.createDoc)
   const [path, setPath] = useState('')
   const [projects, setProjectsText] = useState('')
@@ -152,8 +174,10 @@ export function NewDoc() {
     try {
       const p = normalizePath(path)
       const keys = projects.split(',').map((k) => k.trim()).filter(Boolean).map(normalizeProject)
+      const { index, outbox } = useDodo.getState()
+      if (visibleDocs(index, outbox).some((d) => d.path === p)) throw new Error(`a doc already exists at ${p}`)
       await createDoc(p, `# ${p.split('/').pop()}\n`, keys)
-      router.replace(`/?doc=${p}`)
+      go(`/?doc=${p}`, { replace: true })
     } catch (err) {
       setError(message(err))
     }

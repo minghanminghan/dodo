@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { search } from '@/client/api'
@@ -41,17 +41,17 @@ export function Search({ docs, project, offline, children }: { docs: Doc[]; proj
       />
       {query && offline && <p className="text-[11px] text-amber-700">Offline: searching titles only</p>}
       <div className="min-h-0 flex-1 overflow-auto">
-        {!query ? (
-          children
-        ) : shown.length ? (
+        {/* The tree stays mounted during a search so its open folders survive. */}
+        <div hidden={Boolean(query)}>{children}</div>
+        {!query ? null : shown.length ? (
           <ul>
             {shown.map((h) => (
               <li key={h.path}>
-                <Link href={`/?doc=${h.path}`} className="block rounded px-2 py-1 hover:bg-gray-100">
+                <AppLink href={`/?doc=${h.path}`} className="block rounded px-2 py-1 hover:bg-gray-100">
                   <div className="truncate text-sm text-gray-900">{h.title}</div>
                   <div className="truncate text-xs text-gray-500">{h.path}</div>
                   {h.snippet && <div className="truncate text-xs text-gray-600">{h.snippet}</div>}
-                </Link>
+                </AppLink>
               </li>
             ))}
           </ul>

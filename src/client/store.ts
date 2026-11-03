@@ -21,6 +21,7 @@ export type DodoState = {
   flush(): Promise<void>
   dismissConflict(copy: string): void
   discardEntry(clientId: string): void
+  retryEntry(clientId: string): void
 }
 
 // Every send asks for a conflict copy and carries the entry's clientId, so a retry is never a duplicate.
@@ -113,21 +114,26 @@ export const useDodo = create<DodoState>((set, get) => {
           if (e.error) continue
           const { entry, result } = await flushEntry(e, deps)
           if (entry) {
-            setOutbox(get().outbox.map((o) => (o.clientId === e.clientId ? entry : o)))
+            // Keep the live entry, not the sent copy: it may hold an edit made while this one was in flight.
             if (!entry.error) {
               set({ offline: true })
               break
             }
+            setOutbox(get().outbox.map((o) => (o.clientId === e.clientId ? { ...o, error: entry.error } : o)))
             continue
           }
+          if (!result) continue
           sent = true
           const now = get().outbox.find((o) => o.clientId === e.clientId)
-          // An edit made while this one was in flight becomes a new write on top of what the server saved.
+          // A body the server does not have yet (edited in flight, or a retried create) becomes a new write on top.
           const rest = get().outbox.filter((o) => o.clientId !== e.clientId)
           const again: OutboxEntry[] =
-            now && now.body !== e.body && result
+            now && now.body !== result.doc.body
               ? [{ ...now, kind: 'write', path: result.doc.path, baseHash: result.doc.bodyHash, clientId: crypto.randomUUID() }]
               : []
+          // Show the saved doc now, so the old body does not flash before refreshIndex returns.
+          const index = get().index
+          if (index) set({ index: { docs: [...index.docs.filter((d) => d.path !== result.doc.path), result.doc] } })
           setOutbox([...rest, ...again])
           if (result?.conflictOf) set({ conflicts: [...get().conflicts, { path: result.conflictOf, copy: result.doc.path }] })
         }
@@ -143,6 +149,11 @@ export const useDodo = create<DodoState>((set, get) => {
 
     discardEntry(clientId) {
       setOutbox(get().outbox.filter((e) => e.clientId !== clientId))
+    },
+
+    retryEntry(clientId) {
+      setOutbox(get().outbox.map((e) => (e.clientId === clientId ? { ...e, error: undefined } : e)))
+      void get().flush()
     },
   }
 })
