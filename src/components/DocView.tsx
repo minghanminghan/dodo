@@ -36,6 +36,7 @@ export function DocView({ doc }: { doc: Doc }) {
   const refreshIndex = useDodo((s) => s.refreshIndex)
   const [draft, setDraft] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState(false)
   const view = useRef<EditorView | null>(null)
   const file = useRef<HTMLInputElement>(null)
   // A doc only in the outbox does not exist on the server yet.
@@ -110,7 +111,13 @@ export function DocView({ doc }: { doc: Doc }) {
         </div>
         {draft === null ? (
           <>
-            <button className={btn} onClick={() => setDraft(doc.body)}>
+            <button
+              className={btn}
+              onClick={() => {
+                setPreview(false)
+                setDraft(doc.body)
+              }}
+            >
               Edit
             </button>
             <button className={btn} disabled={offline || busy || !onServer} title={offline ? NEEDS_SIGNAL : undefined} onClick={move}>
@@ -143,6 +150,9 @@ export function DocView({ doc }: { doc: Doc }) {
                 if (f) upload(f)
               }}
             />
+            <button className={btn} onClick={() => setPreview(!preview)}>
+              {preview ? 'Write' : 'Preview'}
+            </button>
             <button className={btn} onClick={() => (!dirty || confirm('Discard your unsaved edit?')) && setDraft(null)}>
               Cancel
             </button>
@@ -158,7 +168,17 @@ export function DocView({ doc }: { doc: Doc }) {
           <Markdown>{doc.body}</Markdown>
         </div>
       ) : (
-        <Editor initial={draft} onChange={setDraft} viewRef={view} />
+        <>
+          {preview && (
+            <div className="min-h-0 flex-1 overflow-auto">
+              <Markdown>{draft}</Markdown>
+            </div>
+          )}
+          {/* Hidden, not unmounted, so undo history and cursor survive a preview. */}
+          <div className={preview ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
+            <Editor initial={draft} onChange={setDraft} viewRef={view} />
+          </div>
+        </>
       )}
     </div>
   )
