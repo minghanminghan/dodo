@@ -6,40 +6,32 @@ Spec: `docs/superpowers/specs/2026-11-02-dodo-design.md`.
 
 ## How it runs
 
-On the mini PC, the same way as sparrow: systemd runs the current release in `/opt/dodo/current`.
+On the mini PC, deployed by [hawk](https://github.com/minghanminghan/hawk): systemd runs the current release in `/opt/dodo/current`.
 
-- `dodo.service`: the Next.js app on `127.0.0.1:3420` (sparrow 3417, crow 3418, budgie 3419). Caddy serves it to the tailnet only at `https://dodo.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`. No login.
+- `dodo.service`: the Next.js app on `127.0.0.1:3420` (sparrow 3417, crow 3418, budgie 3419). Caddy serves it to the tailnet only at `https://dodo.andrewminghanjiang.com`. No login.
 - `dodo-predeploy.service`: run by each deploy. It backs up the DB, then migrates it.
 - `dodo-backup.timer`: nightly backup into `/var/backups/dodo`, and removes old backups and orphan files.
 
 Data is in `/var/lib/dodo`: the SQLite DB `dodo.db` and uploaded files in `files/`.
 
-Every push to `main` runs the tests. semantic-release tags a version from the conventional commits, and the self-hosted runner on the mini PC deploys it (`deploy/deploy.sh`). Pull requests check the title and run the tests.
+Every push to `main` runs the tests. hawk's release workflow tags a version from the conventional commits, and the runner on the mini PC deploys it (`hawk deploy dodo`, which runs `deploy/build.sh`). Pull requests check the title and run the tests.
 
 ## Deploy (mini PC)
 
-You need sparrow already deployed on the mini PC (this uses its Caddy script), and Node 24+ and pnpm installed system-wide.
+hawk must be installed on the mini PC, with Node 24+ and pnpm system-wide. `apps/dodo.env` in hawk holds the port and health path.
 
-1. **Push the repo to GitHub** and protect `main`, as for sparrow.
-2. **Set up the mini PC.** From a checkout of this repo on the mini PC:
-
-   ```sh
-   sudo deploy/setup.sh
-   ```
-
-   It is safe to re-run. Run it again after the first deploy (step 4): only then does it add the Caddy site, since sparrow's Caddy script checks that the site answers.
-3. **Install the runner** (one time):
+1. **Add the runner** (one time):
 
    ```sh
-   gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token   # on your laptop
-   sudo RUNNER_TOKEN=<token> deploy/runner.sh
+   gh api -X POST repos/minghanminghan/dodo/actions/runners/registration-token -q .token   # on your laptop
+   sudo hawk runner https://github.com/minghanminghan/dodo <token>
    ```
 
-4. **First deploy.** Push to `main`, or re-run the deploy job of the latest release workflow run.
-5. **Add the Caddy site:** `sudo deploy/setup.sh` again.
-6. Open `https://dodo.andrewminghanjiang.com` from a device on your tailnet. On a phone, use "Add to Home Screen".
+2. **Set up dodo** from a checkout of this repo: `sudo hawk setup dodo <checkout>`. It is safe to re-run, and also runs `deploy/hawk-setup.sh`.
+3. **Deploy.** Push to `main`.
+4. Open `https://dodo.andrewminghanjiang.com` from a device on your tailnet. On a phone, use "Add to Home Screen".
 
-Rollback: `sudo ln -sfn /opt/dodo/releases/<old> /opt/dodo/current && sudo systemctl restart dodo`. If a migration changed the DB, first restore a copy from `/var/backups/dodo` with dodo stopped.
+Rollback: `sudo hawk rollback dodo [release]`. If a migration changed the DB, first restore a copy from `/var/backups/dodo` with dodo stopped.
 
 ## CLI
 
